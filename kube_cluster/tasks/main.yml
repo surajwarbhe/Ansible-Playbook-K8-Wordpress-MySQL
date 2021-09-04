@@ -1,0 +1,65 @@
+---
+# tasks file for kube_cluster
+
+# tasks file for ec2
+
+- name: Installing boto & boto3 libraries
+  pip:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ lib_names }}"
+
+- name: Creating Security Group for K8s Cluster
+  ec2_group:
+    name: "{{ sg_name }}"
+    description: Security Group for allowing all port
+    region: "{{ region_name }}"
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    rules:
+    - proto: all
+      cidr_ip: 0.0.0.0/0
+    rules_egress:
+    - proto: all
+      cidr_ip: 0.0.0.0/0
+
+- name: Launching three EC2 instances on AWS
+  ec2:
+    key_name: "{{ keypair }}"
+    instance_type: "{{ instance_flavour }}"
+    image: "{{ ami_id }}"
+    wait: true
+    group: "{{ sg_name }}"
+    count: 1
+    vpc_subnet_id: "{{ subnet_name }}"
+    assign_public_ip: yes
+    region: "{{ region_name }}"
+    state: present
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    instance_tags:
+      Name: "{{ item }}"
+  register: ec2
+  loop: "{{ instance_tag }}"
+
+- name: Add 1st instance to host group ec2_master
+  add_host:
+    hostname: "{{ ec2.results[0].instances[0].public_ip }}"
+    groupname: ec2_master
+
+- name: Add 2nd instance to host group ec2_slave
+  add_host:
+    hostname: "{{ ec2.results[1].instances[0].public_ip }}"
+    groupname: ec2_slave
+
+- name: Add 3rd instance to host group ec2_slave
+  add_host:
+    hostname: "{{ ec2.results[2].instances[0].public_ip }}"
+    groupname: ec2_slave
+
+- name: Waiting for SSH
+  wait_for:
+    host: "{{ ec2.results[2].instances[0].public_dns_name }}"
+    port: 22
+    state: started
+

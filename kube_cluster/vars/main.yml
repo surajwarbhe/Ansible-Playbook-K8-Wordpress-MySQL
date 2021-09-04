@@ -1,0 +1,18 @@
+---
+# vars file for kube_cluster
+
+instance_tag:
+        - master
+        - slave1
+        - slave2
+
+lib_names:
+        - boto
+        - boto3
+
+sg_name: Allow_All_SG
+region_name: ap-south-1
+subnet_name: subnet-49f0e521
+ami_id: ami-010aff33ed5991201
+keypair: awskey
+instance_flavour: t2.small

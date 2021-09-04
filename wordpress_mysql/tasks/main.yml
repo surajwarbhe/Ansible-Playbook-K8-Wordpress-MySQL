@@ -1,0 +1,33 @@
+---
+# tasks file for wordpress_mysql
+
+  - name: Copying Wordpress and MySQL files to K8s Master Node
+    copy:
+        src: "{{ item }}"
+        dest: /root/
+    loop:
+        - mysql.yml
+        - pvc_mysql.yml
+        - pvc_wordpress.yml
+        - secret.yml
+        - wordpress.yml
+
+  - name: Creating directory over which MySQL container mounts the PersistentVolume at /var/lib/mysql.
+    file:
+        path: /mysqldata
+        state: directory
+
+  - name: Creating directory over which WordPress container mounts the PersistentVolume at /var/www/html.
+    file:
+        path: /wordpressdata
+        state: directory
+
+
+  - name: Configuration and Setup of Wordpress and MySQL
+    shell: "kubectl create -f /root/{{ item }}"
+    loop:
+        - mysql.yml
+        - pvc_mysql.yml
+        - pvc_wordpress.yml
+        - wordpress.yml
+

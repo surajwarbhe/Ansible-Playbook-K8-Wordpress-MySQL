@@ -1,0 +1,86 @@
+---
+# tasks file for k8s_master
+
+- name: "Installing docker and iproute-tc"
+  package:
+     name:
+         - docker
+         - iproute-tc
+     state: present
+
+- name: "Configuring the Yum repo for kubernetes"
+  yum_repository:
+     name: kubernetes
+     description: Yum for k8s
+     baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+     enabled: yes
+     gpgcheck: yes
+     repo_gpgcheck: yes
+     gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+- name: "Installing kubeadm,kubelet kubectl program"
+  yum:
+     name:
+        - kubelet
+        - kubectl
+        - kubeadm
+     state: present
+
+- name: "Enabling the docker and kubenetes"
+  service:
+     name: "{{ item }}"
+     state: started
+     enabled: yes
+  loop:
+        - kubelet
+        - docker
+
+- name: "Pulling the config images"
+  shell: kubeadm config images pull
+
+- name: "Confuring the docker daemon.json file"
+  copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+      "exec-opts": ["native.cgroupdriver=systemd"]
+      }
+
+- name: "Restarting the docker service"
+  service:
+     name: docker
+     state: restarted
+
+- name: "Configuring the Ip tables and refreshing sysctl"
+  copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+      "exec-opts": ["native.cgroupdriver=systemd"]
+      }
+
+- name: "systemctl"
+  shell: "sysctl --system"
+
+- name: "Starting kubeadm service"
+  shell: "kubeadm init  --ignore-preflight-errors=all"
+
+- name: "Creating .kube Directory"
+  file:
+     path: $HOME/.kube
+     state: directory
+
+- name: "Copying file config file"
+  shell: "cp -i /etc/kubernetes/admin.conf $HOME/.kube/config"
+  ignore_errors: yes
+
+- name: "Installing Addons e.g flannel"
+  shell: "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+
+- name: "Creating the token"
+  shell: "kubeadm token create --print-join-command"
+  register: token
+
+- debug:
+       msg: "{{ token.stdout }}"
+
